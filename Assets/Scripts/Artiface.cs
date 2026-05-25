@@ -4,20 +4,18 @@ using System.Collections.Generic;
 
 public class Artiface : MonoBehaviour
 {
+    public float timerRate;
     #region Basic AI Settings
     public enum aiType { Enemy, Mob };
     public aiType agentType;
-
     [Header("Capabilities")]
+    public NavMeshAgent entityNavAgent;
     public bool hearingEnabled;
     public bool visionEnabled;
     public bool wanderEnabled;
     #endregion
 
-    #region 
-    public NavMeshAgent entityNavAgent;
 
-    #endregion
 
     #region FOV Vars
     [Header("Field Of View")]
@@ -32,8 +30,8 @@ public class Artiface : MonoBehaviour
 
     #region Wander Variables
     [Header("Wander")]
-    public float wanderTargetTimer;
     public float wanderTimer;
+    public float wanderTimerGoal;
     public float wanderRange;
     public Vector3 wanderTarget;
     public float MaxTargetHeight;
@@ -41,6 +39,8 @@ public class Artiface : MonoBehaviour
 
     #region Hearing Variables
     [Header("Hearing")]
+    public float hearingTimer;
+    public float hearingTimerGoal;
     public float hearingRange;
     public float hearingThreshold;
     public Vector3 lastHeardLocation;
@@ -66,17 +66,29 @@ public class Artiface : MonoBehaviour
         _transform = transform;
         playerRef = NyanManager.instance.PlayerRef;
         entityNavAgent = GetComponent<NavMeshAgent>();
-        InvokeRepeating(nameof(FieldOfViewCheck), 0f, 0.2f);
+        if (visionEnabled)
+        {
+            InvokeRepeating(nameof(FieldOfViewCheck), 0f, 0.2f);
+        }
     }
 
     public void Update()
     {
 
-        canHearPlayer = playerSoundCheck();
-
-        if (canHearPlayer)
+        if (hearingEnabled)
         {
-            entityNavAgent.destination = lastHeardLocation;
+            canHearPlayer = playerSoundCheck();
+            if (canHearPlayer)
+            {
+                entityNavAgent.destination = lastHeardLocation;
+            }
+        }
+        if (visionEnabled)
+        {
+            if (canSeePlayer)
+            {
+                entityNavAgent.destination = NyanManager.instance.PlayerRef.transform.position;
+            }
         }
         if (!canSeePlayer && !canHearPlayer)
         {
@@ -101,9 +113,9 @@ public class Artiface : MonoBehaviour
     #region wander Behaviour
     public void WanderRoutine()
     {
-        if (wanderTimer < wanderTargetTimer)
+        if (wanderTimer < wanderTimerGoal)
         {
-            wanderTimer += Time.deltaTime * 0.7f;
+            wanderTimer += Time.deltaTime * timerRate;
             return;
         }
 
@@ -128,16 +140,22 @@ public class Artiface : MonoBehaviour
     #region Hearing Behaviour
     public bool playerSoundCheck()
     {
-        Collider[] surroundings = Physics.OverlapSphere(transform.position, hearingRange, targetMask);
-        if(surroundings.Length > 0)
+        if (hearingTimer >= hearingTimerGoal)
         {
-            if(NyanManager.instance.playerMagnitude >= hearingThreshold)
+            hearingTimer = 0;
+            Collider[] surroundings = Physics.OverlapSphere(transform.position, hearingRange, targetMask);
+            if (surroundings.Length > 0)
             {
-                lastHeardLocation = NyanManager.instance.PlayerRef.transform.position;
-                return true;
+                if (NyanManager.instance.playerMagnitude >= hearingThreshold)
+                {
+                    lastHeardLocation = NyanManager.instance.PlayerRef.transform.position;
+                    return true;
+                }
             }
+            return false;
         }
-        return false;
+        hearingTimer += Time.deltaTime * timerRate;
+        return canHearPlayer;
     }
     #endregion
 

@@ -6,6 +6,8 @@ public class NyanManager : MonoBehaviour
     public GameObject PlayerRef;
     public Vector3 _lastPlayerPos;
     public float playerMagnitude;
+    public float magnitudeAmplifier;
+
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -17,7 +19,7 @@ public class NyanManager : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        playerMagnitude = getPlayerMagnitude();
+        playerMagnitude = getPlayerMagnitude() * magnitudeAmplifier;
     }
 
     public float getPlayerMagnitude()
