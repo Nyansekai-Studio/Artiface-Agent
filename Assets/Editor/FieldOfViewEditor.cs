@@ -24,7 +24,10 @@ public class FieldOfViewEditor : Editor
         if (fov.canSeePlayer)
         {
             Handles.color = Color.green;
-            Handles.DrawLine(fov.transform.position, fov.playerRef.transform.position);
+            for (int i = 0; i < NyanManager.instance.PlayerRef.Count; i++)
+            {
+                Handles.DrawLine(fov.transform.position, NyanManager.instance.PlayerRef[i].transform.position);
+            }
         }
     }
 
@@ -34,6 +37,6 @@ public class FieldOfViewEditor : Editor
 
         return new Vector3(Mathf.Sin(angleInDegrees * Mathf.Deg2Rad), 0, Mathf.Cos(angleInDegrees * Mathf.Deg2Rad));
     }
-    
+
 
 }

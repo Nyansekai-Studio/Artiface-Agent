@@ -8,6 +8,7 @@ public class Artiface : MonoBehaviour
     #region Basic AI Settings
     public enum aiType { Enemy, Mob };
     public aiType agentType;
+
     [Header("Capabilities")]
     public NavMeshAgent entityNavAgent;
     public bool hearingEnabled;
@@ -15,13 +16,18 @@ public class Artiface : MonoBehaviour
     public bool wanderEnabled;
     #endregion
 
+    #region Behaviour Vars
+    public enum behaviours { Wander, Chase, Search, Attack };
+    public behaviours currentBehaviour;
 
+    #endregion
 
     #region FOV Vars
     [Header("Field Of View")]
+    public float visionTimer;
+    public float VisionTimerGoal;
     public float radius;
     [Range(0, 360)] public float angle;
-    public GameObject playerRef;
     public LayerMask targetMask, obstructionMask;
     public bool canSeePlayer;
     private Transform _transform;
@@ -61,10 +67,14 @@ public class Artiface : MonoBehaviour
     public LayerMask interactableMask;
     #endregion
 
+    #region movementVars
+    public float walkSpeed;
+    public float runSpeed;
+    #endregion
+
     public void Start()
     {
         _transform = transform;
-        playerRef = NyanManager.instance.PlayerRef;
         entityNavAgent = GetComponent<NavMeshAgent>();
         if (visionEnabled)
         {
@@ -74,39 +84,40 @@ public class Artiface : MonoBehaviour
 
     public void Update()
     {
-
+        //Checks
+        if (visionEnabled)
+        {
+            canSeePlayer = FieldOfViewCheck();
+        }
         if (hearingEnabled)
         {
             canHearPlayer = playerSoundCheck();
-            if (canHearPlayer)
-            {
-                entityNavAgent.destination = lastHeardLocation;
-            }
         }
-        if (visionEnabled)
-        {
-            if (canSeePlayer)
-            {
-                entityNavAgent.destination = NyanManager.instance.PlayerRef.transform.position;
-            }
-        }
-        if (!canSeePlayer && !canHearPlayer)
-        {
-            WanderRoutine();
-        }
+
+
+
+
 
     }
 
     #region FOV
-    private void FieldOfViewCheck()
+    private bool FieldOfViewCheck()
     {
-        if (Physics.OverlapSphereNonAlloc(_transform.position, radius, _hits, targetMask) == 0)
+        bool sightCheck = false;
+        if (visionTimer >= VisionTimerGoal)
         {
-            canSeePlayer = false;
-            return;
+
+            if (Physics.OverlapSphereNonAlloc(_transform.position, radius, _hits, targetMask) == 0)
+            {
+                return sightCheck;
+            }
+            Vector3 dir = (_hits[0].transform.position - _transform.position).normalized;
+            sightCheck = Vector3.Angle(_transform.forward, dir) < angle / 2 && !Physics.Raycast(_transform.position, dir, Vector3.Distance(_transform.position, _hits[0].transform.position), obstructionMask);
+            visionTimer = 0;
+            return sightCheck;
         }
-        Vector3 dir = (_hits[0].transform.position - _transform.position).normalized;
-        canSeePlayer = Vector3.Angle(_transform.forward, dir) < angle / 2 && !Physics.Raycast(_transform.position, dir, Vector3.Distance(_transform.position, _hits[0].transform.position), obstructionMask);
+        visionTimer += Time.deltaTime * timerRate;
+        return sightCheck;
     }
     #endregion
 
@@ -140,16 +151,21 @@ public class Artiface : MonoBehaviour
     #region Hearing Behaviour
     public bool playerSoundCheck()
     {
+
         if (hearingTimer >= hearingTimerGoal)
         {
             hearingTimer = 0;
             Collider[] surroundings = Physics.OverlapSphere(transform.position, hearingRange, targetMask);
             if (surroundings.Length > 0)
             {
-                if (NyanManager.instance.playerMagnitude >= hearingThreshold)
+                for (int i = 0; i < NyanManager.instance.PlayerRef.Count; i++)
                 {
-                    lastHeardLocation = NyanManager.instance.PlayerRef.transform.position;
-                    return true;
+                    if (NyanManager.instance.playerMagnitude[i] >= hearingThreshold)
+                    {
+                        lastHeardLocation = NyanManager.instance.PlayerRef[i].transform.position;
+                        return true;
+                    }
+
                 }
             }
             return false;
