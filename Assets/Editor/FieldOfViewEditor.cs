@@ -2,15 +2,13 @@ using UnityEditor;
 using UnityEngine;
 
 [CustomEditor(typeof(Artiface), true)]
-[InitializeOnLoad]
 public class FieldOfViewEditor : Editor
 {
-
-    [DrawGizmo(GizmoType.InSelectionHierarchy | GizmoType.NotInSelectionHierarchy)]
     public void OnSceneGUI()
     {
-        //fov
         Artiface fov = (Artiface)target;
+
+        // FOV arc
         Handles.color = Color.white;
         Handles.DrawWireArc(fov.transform.position, Vector3.up, Vector3.forward, 360, fov.radius);
 
@@ -21,22 +19,24 @@ public class FieldOfViewEditor : Editor
         Handles.DrawLine(fov.transform.position, fov.transform.position + viewAngle01 * fov.radius);
         Handles.DrawLine(fov.transform.position, fov.transform.position + viewAngle02 * fov.radius);
 
-        if (fov.canSeePlayer)
+        // Sight line to current visual target only
+        if (fov.canSeePlayer && fov.currentVisualTarget != null)
         {
             Handles.color = Color.green;
-            for (int i = 0; i < NyanManager.instance.PlayerRef.Count; i++)
-            {
-                Handles.DrawLine(fov.transform.position, NyanManager.instance.PlayerRef[i].transform.position);
-            }
+            Handles.DrawLine(fov.transform.position, fov.currentVisualTarget.transform.position);
+        }
+
+        // Sight line to current audio target
+        if (fov.canHearPlayer && fov.currentAudioTarget != null)
+        {
+            Handles.color = Color.yellow;
+            Handles.DrawLine(fov.transform.position, fov.currentAudioTarget.transform.position);
         }
     }
 
     public Vector3 DirectionFromAngle(float eulerY, float angleInDegrees)
     {
         angleInDegrees += eulerY;
-
         return new Vector3(Mathf.Sin(angleInDegrees * Mathf.Deg2Rad), 0, Mathf.Cos(angleInDegrees * Mathf.Deg2Rad));
     }
-
-
 }

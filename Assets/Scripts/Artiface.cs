@@ -17,7 +17,7 @@ public class Artiface : MonoBehaviour
     #endregion
 
     #region Behaviour Vars
-    public enum behaviours { Wander, Chase, Search, Attack };
+    public enum behaviours { Wander, Chase, Search, Investigate, Attack };
     public behaviours currentBehaviour;
 
     #endregion
@@ -30,8 +30,8 @@ public class Artiface : MonoBehaviour
     [Range(0, 360)] public float angle;
     public LayerMask targetMask, obstructionMask;
     public bool canSeePlayer;
+    public GameObject currentVisualTarget;
     private Transform _transform;
-    private readonly Collider[] _hits = new Collider[1];
     #endregion
 
     #region Wander Variables
@@ -49,6 +49,7 @@ public class Artiface : MonoBehaviour
     public float hearingTimerGoal;
     public float hearingRange;
     public float hearingThreshold;
+    public GameObject currentAudioTarget;
     public Vector3 lastHeardLocation;
     public bool canHearPlayer;
     #endregion
@@ -76,10 +77,6 @@ public class Artiface : MonoBehaviour
     {
         _transform = transform;
         entityNavAgent = GetComponent<NavMeshAgent>();
-        if (visionEnabled)
-        {
-            InvokeRepeating(nameof(FieldOfViewCheck), 0f, 0.2f);
-        }
     }
 
     public void Update()
@@ -94,36 +91,76 @@ public class Artiface : MonoBehaviour
             canHearPlayer = playerSoundCheck();
         }
 
+        if (canSeePlayer)
+        {
+            Chase();
+            return;
+        }
+        if (canHearPlayer)
+        {
+            Search();
+            return;
+        }
+        if(wanderEnabled) WanderRoutine();
+    }
 
+    public void Chase()
+    {
+        if (entityNavAgent.speed != runSpeed) entityNavAgent.speed = runSpeed;
+        if (currentVisualTarget != null)
+        {
+            entityNavAgent.destination = currentVisualTarget.transform.position;
+        }
+    }
 
-
-
+    public void Search()
+    {
+        if(entityNavAgent.speed != runSpeed) entityNavAgent.speed = runSpeed;
+        if (currentAudioTarget != null)
+        {
+            entityNavAgent.destination = lastHeardLocation;
+        }
     }
 
     #region FOV
     private bool FieldOfViewCheck()
     {
-        bool sightCheck = false;
-        if (visionTimer >= VisionTimerGoal)
+        if (visionTimer <= VisionTimerGoal)
         {
-
-            if (Physics.OverlapSphereNonAlloc(_transform.position, radius, _hits, targetMask) == 0)
-            {
-                return sightCheck;
-            }
-            Vector3 dir = (_hits[0].transform.position - _transform.position).normalized;
-            sightCheck = Vector3.Angle(_transform.forward, dir) < angle / 2 && !Physics.Raycast(_transform.position, dir, Vector3.Distance(_transform.position, _hits[0].transform.position), obstructionMask);
-            visionTimer = 0;
-            return sightCheck;
+            visionTimer += Time.deltaTime * timerRate;
+            return false;
         }
-        visionTimer += Time.deltaTime * timerRate;
-        return sightCheck;
+
+        visionTimer = 0;
+
+        List<GameObject> players = NyanManager.instance.PlayerRef;
+
+        for (int i = 0; i < players.Count; i++)
+        {
+            if (players[i] == null) continue;
+
+            Vector3 dirToPlayer = (players[i].transform.position - _transform.position).normalized;
+            float distToPlayer = Vector3.Distance(_transform.position, players[i].transform.position);
+
+            if (distToPlayer > radius) continue;
+            if (Vector3.Angle(_transform.forward, dirToPlayer) > angle / 2) continue;
+            if (Physics.Raycast(_transform.position, dirToPlayer, distToPlayer, obstructionMask)) continue;
+
+            // First valid player found
+            currentVisualTarget = players[i];
+            return true;
+        }
+
+        currentVisualTarget = null;
+        return false;
     }
     #endregion
 
     #region wander Behaviour
     public void WanderRoutine()
-    {
+    {   
+        if (entityNavAgent.speed != walkSpeed) entityNavAgent.speed = walkSpeed;
+
         if (wanderTimer < wanderTimerGoal)
         {
             wanderTimer += Time.deltaTime * timerRate;
@@ -151,27 +188,28 @@ public class Artiface : MonoBehaviour
     #region Hearing Behaviour
     public bool playerSoundCheck()
     {
-
-        if (hearingTimer >= hearingTimerGoal)
+        if (hearingTimer < hearingTimerGoal)
         {
-            hearingTimer = 0;
-            Collider[] surroundings = Physics.OverlapSphere(transform.position, hearingRange, targetMask);
-            if (surroundings.Length > 0)
-            {
-                for (int i = 0; i < NyanManager.instance.PlayerRef.Count; i++)
-                {
-                    if (NyanManager.instance.playerMagnitude[i] >= hearingThreshold)
-                    {
-                        lastHeardLocation = NyanManager.instance.PlayerRef[i].transform.position;
-                        return true;
-                    }
-
-                }
-            }
-            return false;
+            hearingTimer += Time.deltaTime * timerRate;
+            return canHearPlayer;
         }
-        hearingTimer += Time.deltaTime * timerRate;
-        return canHearPlayer;
+        hearingTimer = 0;
+        List<GameObject> players = NyanManager.instance.PlayerRef;
+        Collider[] surroundings = Physics.OverlapSphere(_transform.position, hearingRange, targetMask);
+        if (surroundings.Length == 0) return false;
+        for (int i = 0; i < players.Count; i++)
+        {
+            if (players[i] == null) continue;
+            if (NyanManager.instance.playerMagnitude[i] < hearingThreshold) continue;
+
+            // First player loud enough
+            lastHeardLocation = players[i].transform.position;
+            currentAudioTarget = players[i];
+            return true;
+        }
+
+        currentAudioTarget = null;
+        return false;
     }
     #endregion
 
