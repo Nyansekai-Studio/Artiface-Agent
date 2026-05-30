@@ -22,15 +22,9 @@ public class FieldOfViewEditor : Editor
         // Sight line to current visual target only
         if (fov.canSeePlayer && fov.currentVisualTarget != null)
         {
+            Debug.Log("Attempting to Draw SightLine");
             Handles.color = Color.green;
             Handles.DrawLine(fov.transform.position, fov.currentVisualTarget.transform.position);
-        }
-
-        // Sight line to current audio target
-        if (fov.canHearPlayer && fov.currentAudioTarget != null)
-        {
-            Handles.color = Color.yellow;
-            Handles.DrawLine(fov.transform.position, fov.currentAudioTarget.transform.position);
         }
     }
 

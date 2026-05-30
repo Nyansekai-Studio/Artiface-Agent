@@ -4,7 +4,6 @@ using System.Collections.Generic;
 
 public class Artiface : MonoBehaviour
 {
-    public float timerRate;
     #region Basic AI Settings
     public enum aiType { Enemy, Mob };
     public aiType agentType;
@@ -73,6 +72,10 @@ public class Artiface : MonoBehaviour
     public float runSpeed;
     #endregion
 
+    public float searchTimer;
+    public float searchTimerGoal;
+    public float searchMinDistance;
+
     public void Start()
     {
         _transform = transform;
@@ -91,22 +94,37 @@ public class Artiface : MonoBehaviour
             canHearPlayer = playerSoundCheck();
         }
 
-        if (canSeePlayer)
+
+
+
+        if (currentBehaviour == behaviours.Wander)
         {
-            Chase();
-            return;
+            if (canSeePlayer)
+            {
+                Chase();
+                return;
+            }
+            if (canHearPlayer)
+            {
+                Search();
+                return;
+            }
+            if (wanderEnabled) WanderRoutine();
         }
-        if (canHearPlayer)
+
+        if (currentBehaviour == behaviours.Search)
         {
             Search();
             return;
         }
-        if(wanderEnabled) WanderRoutine();
     }
 
     public void Chase()
     {
-        if (entityNavAgent.speed != runSpeed) entityNavAgent.speed = runSpeed;
+        if (entityNavAgent.speed != runSpeed)
+        {
+            entityNavAgent.speed = runSpeed;
+        }
         if (currentVisualTarget != null)
         {
             entityNavAgent.destination = currentVisualTarget.transform.position;
@@ -115,19 +133,31 @@ public class Artiface : MonoBehaviour
 
     public void Search()
     {
-        if(entityNavAgent.speed != runSpeed) entityNavAgent.speed = runSpeed;
+        if (entityNavAgent.speed != runSpeed) entityNavAgent.speed = runSpeed;
+        if (Vector3.Distance(transform.position, lastHeardLocation) <= searchMinDistance){
+            entityNavAgent.destination = transform.position;
+            currentBehaviour = behaviours.Investigate;
+            return;
+        }
+
+
         if (currentAudioTarget != null)
         {
             entityNavAgent.destination = lastHeardLocation;
         }
     }
 
+    public void investigate()
+    {
+
+    }
+
     #region FOV
     private bool FieldOfViewCheck()
     {
-        if (visionTimer <= VisionTimerGoal)
+        if (visionTimer < VisionTimerGoal)
         {
-            visionTimer += Time.deltaTime * timerRate;
+            visionTimer += Time.deltaTime * NyanManager.instance.timerRate;
             return false;
         }
 
@@ -158,12 +188,12 @@ public class Artiface : MonoBehaviour
 
     #region wander Behaviour
     public void WanderRoutine()
-    {   
+    {
         if (entityNavAgent.speed != walkSpeed) entityNavAgent.speed = walkSpeed;
 
         if (wanderTimer < wanderTimerGoal)
         {
-            wanderTimer += Time.deltaTime * timerRate;
+            wanderTimer += Time.deltaTime * NyanManager.instance.timerRate;
             return;
         }
 
@@ -190,7 +220,7 @@ public class Artiface : MonoBehaviour
     {
         if (hearingTimer < hearingTimerGoal)
         {
-            hearingTimer += Time.deltaTime * timerRate;
+            hearingTimer += Time.deltaTime * NyanManager.instance.timerRate;
             return canHearPlayer;
         }
         hearingTimer = 0;
