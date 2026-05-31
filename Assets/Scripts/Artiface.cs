@@ -97,25 +97,34 @@ public class Artiface : MonoBehaviour
 
 
 
-        if (currentBehaviour == behaviours.Wander)
+        
+
+        if (currentBehaviour == behaviours.Chase)
         {
-            if (canSeePlayer)
+            if (!canSeePlayer)
             {
-                Chase();
+                currentBehaviour = behaviours.Wander;
                 return;
             }
-            if (canHearPlayer)
-            {
-                Search();
-                return;
-            }
-            if (wanderEnabled) WanderRoutine();
+            currentBehaviour = behaviours.Chase;
+
         }
 
         if (currentBehaviour == behaviours.Search)
         {
             Search();
             return;
+        }
+
+        if (currentBehaviour == behaviours.Investigate)
+        {
+            investigate();
+            return;
+        }
+
+        if (currentBehaviour == behaviours.Wander)
+        {
+            if (wanderEnabled) WanderRoutine();
         }
     }
 
@@ -133,8 +142,10 @@ public class Artiface : MonoBehaviour
 
     public void Search()
     {
+
         if (entityNavAgent.speed != runSpeed) entityNavAgent.speed = runSpeed;
-        if (Vector3.Distance(transform.position, lastHeardLocation) <= searchMinDistance){
+        if (Vector3.Distance(transform.position, lastHeardLocation) <= searchMinDistance)
+        {
             entityNavAgent.destination = transform.position;
             currentBehaviour = behaviours.Investigate;
             return;
