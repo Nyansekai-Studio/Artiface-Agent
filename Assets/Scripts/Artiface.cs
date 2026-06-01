@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.AI;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 
 public class Artiface : MonoBehaviour
 {
@@ -76,6 +77,14 @@ public class Artiface : MonoBehaviour
     public float searchTimerGoal;
     public float searchMinDistance;
 
+
+    public float investigationRange;
+    public LayerMask investigationMask;
+    public int investigationAttempts;
+    public int maxInvestigationAttempts;
+    public GameObject InvestigationTarget;
+    Collider[] investigationObjects;
+    public float closeInvestigationRange;
     public void Start()
     {
         _transform = transform;
@@ -97,7 +106,7 @@ public class Artiface : MonoBehaviour
 
 
 
-        
+
 
         if (currentBehaviour == behaviours.Chase)
         {
@@ -146,6 +155,7 @@ public class Artiface : MonoBehaviour
         if (entityNavAgent.speed != runSpeed) entityNavAgent.speed = runSpeed;
         if (Vector3.Distance(transform.position, lastHeardLocation) <= searchMinDistance)
         {
+            if (canSeePlayer) return;
             entityNavAgent.destination = transform.position;
             currentBehaviour = behaviours.Investigate;
             return;
@@ -160,6 +170,34 @@ public class Artiface : MonoBehaviour
 
     public void investigate()
     {
+        if (investigationAttempts >= maxInvestigationAttempts)
+        {
+            investigationAttempts = 0;
+            currentBehaviour = behaviours.Wander;
+        }
+
+        if (InvestigationTarget != null)
+        {
+            if (Vector3.Distance(transform.position, currentSearchTarget.transform.position) <= searchMinDistance)
+            {
+                investigationAttempts += 1;
+                InvestigationTarget = null;
+                if (Physics.OverlapSphere(transform.position, closeInvestigationRange, targetMask).Length < 0)
+                {
+                    ///insert attack check later
+                }
+
+
+
+            }
+        }
+
+        if (InvestigationTarget == null)
+        {   
+            Collider[] targetCandidates = Physics.OverlapSphere(transform.position, investigationRange, investigationMask); 
+            currentSearchTarget = targetCandidates[Random.Range(0, targetCandidates.Length)].transform.gameObject;
+        }
+
 
     }
 
